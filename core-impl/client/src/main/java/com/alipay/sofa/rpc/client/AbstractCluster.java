@@ -657,6 +657,11 @@ public abstract class AbstractCluster extends Cluster {
                 // 放入线程上下文
                 RpcInternalContext.getContext().setFuture(future);
                 response = buildEmptyResponse(request);
+            } else if (RpcConstants.INVOKER_TYPE_CLIENT_STREAMING.equals(invokeType)
+                || RpcConstants.INVOKER_TYPE_BI_STREAMING.equals(invokeType)
+                || RpcConstants.INVOKER_TYPE_SERVER_STREAMING.equals(invokeType)) {
+                //流传输的第一次调用实际是为了获取返回的StreamHandler，同步调用即可。
+                response = transport.syncSend(request, timeout);
             } else {
                 throw new SofaRpcException(RpcErrorType.CLIENT_UNDECLARED_ERROR, "Unknown invoke type:" + invokeType);
             }

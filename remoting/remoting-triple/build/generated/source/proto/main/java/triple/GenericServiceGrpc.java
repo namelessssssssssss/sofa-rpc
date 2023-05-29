@@ -58,6 +58,68 @@ public final class GenericServiceGrpc {
     return getGenericMethod;
   }
 
+  private static volatile io.grpc.MethodDescriptor<triple.Request,
+      triple.Response> getGenericBiStreamMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "genericBiStream",
+      requestType = triple.Request.class,
+      responseType = triple.Response.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.BIDI_STREAMING)
+  public static io.grpc.MethodDescriptor<triple.Request,
+      triple.Response> getGenericBiStreamMethod() {
+    io.grpc.MethodDescriptor<triple.Request, triple.Response> getGenericBiStreamMethod;
+    if ((getGenericBiStreamMethod = GenericServiceGrpc.getGenericBiStreamMethod) == null) {
+      synchronized (GenericServiceGrpc.class) {
+        if ((getGenericBiStreamMethod = GenericServiceGrpc.getGenericBiStreamMethod) == null) {
+          GenericServiceGrpc.getGenericBiStreamMethod = getGenericBiStreamMethod =
+              io.grpc.MethodDescriptor.<triple.Request, triple.Response>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.BIDI_STREAMING)
+              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "genericBiStream"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  triple.Request.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  triple.Response.getDefaultInstance()))
+              .setSchemaDescriptor(new GenericServiceMethodDescriptorSupplier("genericBiStream"))
+              .build();
+        }
+      }
+    }
+    return getGenericBiStreamMethod;
+  }
+
+  private static volatile io.grpc.MethodDescriptor<triple.Request,
+      triple.Response> getGenericServerStreamMethod;
+
+  @io.grpc.stub.annotations.RpcMethod(
+      fullMethodName = SERVICE_NAME + '/' + "genericServerStream",
+      requestType = triple.Request.class,
+      responseType = triple.Response.class,
+      methodType = io.grpc.MethodDescriptor.MethodType.SERVER_STREAMING)
+  public static io.grpc.MethodDescriptor<triple.Request,
+      triple.Response> getGenericServerStreamMethod() {
+    io.grpc.MethodDescriptor<triple.Request, triple.Response> getGenericServerStreamMethod;
+    if ((getGenericServerStreamMethod = GenericServiceGrpc.getGenericServerStreamMethod) == null) {
+      synchronized (GenericServiceGrpc.class) {
+        if ((getGenericServerStreamMethod = GenericServiceGrpc.getGenericServerStreamMethod) == null) {
+          GenericServiceGrpc.getGenericServerStreamMethod = getGenericServerStreamMethod =
+              io.grpc.MethodDescriptor.<triple.Request, triple.Response>newBuilder()
+              .setType(io.grpc.MethodDescriptor.MethodType.SERVER_STREAMING)
+              .setFullMethodName(generateFullMethodName(SERVICE_NAME, "genericServerStream"))
+              .setSampledToLocalTracing(true)
+              .setRequestMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  triple.Request.getDefaultInstance()))
+              .setResponseMarshaller(io.grpc.protobuf.ProtoUtils.marshaller(
+                  triple.Response.getDefaultInstance()))
+              .setSchemaDescriptor(new GenericServiceMethodDescriptorSupplier("genericServerStream"))
+              .build();
+        }
+      }
+    }
+    return getGenericServerStreamMethod;
+  }
+
   /**
    * Creates a new async stub that supports all call types for the service
    */
@@ -113,6 +175,20 @@ public final class GenericServiceGrpc {
       asyncUnimplementedUnaryCall(getGenericMethod(), responseObserver);
     }
 
+    /**
+     */
+    public io.grpc.stub.StreamObserver<triple.Request> genericBiStream(
+        io.grpc.stub.StreamObserver<triple.Response> responseObserver) {
+      return asyncUnimplementedStreamingCall(getGenericBiStreamMethod(), responseObserver);
+    }
+
+    /**
+     */
+    public void genericServerStream(triple.Request request,
+        io.grpc.stub.StreamObserver<triple.Response> responseObserver) {
+      asyncUnimplementedUnaryCall(getGenericServerStreamMethod(), responseObserver);
+    }
+
     @java.lang.Override public final io.grpc.ServerServiceDefinition bindService() {
       return io.grpc.ServerServiceDefinition.builder(getServiceDescriptor())
           .addMethod(
@@ -122,6 +198,20 @@ public final class GenericServiceGrpc {
                 triple.Request,
                 triple.Response>(
                   this, METHODID_GENERIC)))
+          .addMethod(
+            getGenericBiStreamMethod(),
+            asyncBidiStreamingCall(
+              new MethodHandlers<
+                triple.Request,
+                triple.Response>(
+                  this, METHODID_GENERIC_BI_STREAM)))
+          .addMethod(
+            getGenericServerStreamMethod(),
+            asyncServerStreamingCall(
+              new MethodHandlers<
+                triple.Request,
+                triple.Response>(
+                  this, METHODID_GENERIC_SERVER_STREAM)))
           .build();
     }
   }
@@ -147,6 +237,22 @@ public final class GenericServiceGrpc {
       asyncUnaryCall(
           getChannel().newCall(getGenericMethod(), getCallOptions()), request, responseObserver);
     }
+
+    /**
+     */
+    public io.grpc.stub.StreamObserver<triple.Request> genericBiStream(
+        io.grpc.stub.StreamObserver<triple.Response> responseObserver) {
+      return asyncBidiStreamingCall(
+          getChannel().newCall(getGenericBiStreamMethod(), getCallOptions()), responseObserver);
+    }
+
+    /**
+     */
+    public void genericServerStream(triple.Request request,
+        io.grpc.stub.StreamObserver<triple.Response> responseObserver) {
+      asyncServerStreamingCall(
+          getChannel().newCall(getGenericServerStreamMethod(), getCallOptions()), request, responseObserver);
+    }
   }
 
   /**
@@ -168,6 +274,14 @@ public final class GenericServiceGrpc {
     public triple.Response generic(triple.Request request) {
       return blockingUnaryCall(
           getChannel(), getGenericMethod(), getCallOptions(), request);
+    }
+
+    /**
+     */
+    public java.util.Iterator<triple.Response> genericServerStream(
+        triple.Request request) {
+      return blockingServerStreamingCall(
+          getChannel(), getGenericServerStreamMethod(), getCallOptions(), request);
     }
   }
 
@@ -195,6 +309,8 @@ public final class GenericServiceGrpc {
   }
 
   private static final int METHODID_GENERIC = 0;
+  private static final int METHODID_GENERIC_SERVER_STREAM = 1;
+  private static final int METHODID_GENERIC_BI_STREAM = 2;
 
   private static final class MethodHandlers<Req, Resp> implements
       io.grpc.stub.ServerCalls.UnaryMethod<Req, Resp>,
@@ -217,6 +333,10 @@ public final class GenericServiceGrpc {
           serviceImpl.generic((triple.Request) request,
               (io.grpc.stub.StreamObserver<triple.Response>) responseObserver);
           break;
+        case METHODID_GENERIC_SERVER_STREAM:
+          serviceImpl.genericServerStream((triple.Request) request,
+              (io.grpc.stub.StreamObserver<triple.Response>) responseObserver);
+          break;
         default:
           throw new AssertionError();
       }
@@ -227,6 +347,9 @@ public final class GenericServiceGrpc {
     public io.grpc.stub.StreamObserver<Req> invoke(
         io.grpc.stub.StreamObserver<Resp> responseObserver) {
       switch (methodId) {
+        case METHODID_GENERIC_BI_STREAM:
+          return (io.grpc.stub.StreamObserver<Req>) serviceImpl.genericBiStream(
+              (io.grpc.stub.StreamObserver<triple.Response>) responseObserver);
         default:
           throw new AssertionError();
       }
@@ -279,6 +402,8 @@ public final class GenericServiceGrpc {
           serviceDescriptor = result = io.grpc.ServiceDescriptor.newBuilder(SERVICE_NAME)
               .setSchemaDescriptor(new GenericServiceFileDescriptorSupplier())
               .addMethod(getGenericMethod())
+              .addMethod(getGenericBiStreamMethod())
+              .addMethod(getGenericServerStreamMethod())
               .build();
         }
       }

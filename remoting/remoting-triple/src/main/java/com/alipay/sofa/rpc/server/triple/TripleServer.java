@@ -38,7 +38,6 @@ import com.alipay.sofa.rpc.server.SofaRejectedExecutionHandler;
 import com.alipay.sofa.rpc.utils.SofaProtoUtils;
 import io.grpc.BindableService;
 import io.grpc.MethodDescriptor;
-import io.grpc.ServerCallHandler;
 import io.grpc.ServerInterceptors;
 import io.grpc.ServerMethodDefinition;
 import io.grpc.ServerServiceDefinition;
@@ -56,16 +55,14 @@ import triple.Request;
 import triple.Response;
 
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
+import static com.alipay.sofa.rpc.common.RpcConstants.*;
 import static io.grpc.MethodDescriptor.generateFullMethodName;
 
 /**
@@ -287,13 +284,14 @@ public class TripleServer implements Server {
     private ServerServiceDefinition getServerServiceDefinition(ProviderConfig providerConfig, UniqueIdInvoker uniqueIdInvoker) {
         // create service definition
         ServerServiceDefinition serviceDef;
+        // 如果有stub（非泛型调用）
         if (SofaProtoUtils.isProtoClass(providerConfig.getRef())) {
             // refer is BindableService
             this.setBindableProxiedImpl(providerConfig, uniqueIdInvoker);
             BindableService bindableService = (BindableService) providerConfig.getRef();
             serviceDef = bindableService.bindService();
         } else {
-            GenericServiceImpl genericService = new GenericServiceImpl(uniqueIdInvoker);
+            GenericServiceImpl genericService = new GenericServiceImpl(uniqueIdInvoker,providerConfig);
             genericService.setProxiedImpl(genericService);
             serviceDef = buildSofaServiceDef(genericService, providerConfig);
         }
@@ -325,12 +323,9 @@ public class TripleServer implements Server {
     private ServerServiceDefinition buildSofaServiceDef(GenericServiceImpl genericService,
                                                         ProviderConfig providerConfig) {
         ServerServiceDefinition templateDefinition = genericService.bindService();
-        ServerCallHandler<Request, Response> templateHandler = (ServerCallHandler<Request, Response>) templateDefinition
-            .getMethods().iterator().next().getServerCallHandler();
-        List<MethodDescriptor<Request, Response>> methodDescriptor = getMethodDescriptor(providerConfig);
-        List<ServerMethodDefinition<Request, Response>> methodDefs = getMethodDefinitions(templateHandler,
-            methodDescriptor);
-        ServerServiceDefinition.Builder builder = ServerServiceDefinition.builder(getServiceDescriptor(
+        List<MethodDescriptor<Request, Response>> methodDescriptor = getMethodDescriptor(providerConfig);//拿实际方法的 Descriptor
+        List<ServerMethodDefinition<Request, Response>> methodDefs = createMethodDefinition(templateDefinition,methodDescriptor);
+        ServerServiceDefinition.Builder builder = ServerServiceDefinition.builder(getServiceDescriptor( //将实际服务与泛型服务中的特定方法绑定起来
             templateDefinition, providerConfig, methodDescriptor));
         for (ServerMethodDefinition<Request, Response> methodDef : methodDefs) {
             builder.addMethod(methodDef);
@@ -338,19 +333,41 @@ public class TripleServer implements Server {
         return builder.build();
     }
 
-    private List<ServerMethodDefinition<Request, Response>> getMethodDefinitions(ServerCallHandler<Request, Response> templateHandler,List<MethodDescriptor<Request, Response>> methodDescriptors) {
-        List<ServerMethodDefinition<Request, Response>> result = new ArrayList<>();
-        for (MethodDescriptor<Request, Response> methodDescriptor : methodDescriptors) {
-            ServerMethodDefinition<Request, Response> serverMethodDefinition = ServerMethodDefinition.create(methodDescriptor, templateHandler);
-            result.add(serverMethodDefinition);
-        }
-        return result;
+    private List<ServerMethodDefinition<Request,Response>> createMethodDefinition(ServerServiceDefinition geneticServiceDefinition, List<MethodDescriptor<Request, Response>> serviceMethods){
+            Collection<ServerMethodDefinition<?, ?>> genericServiceMethods = geneticServiceDefinition.getMethods();
+            List<ServerMethodDefinition<Request,Response>> serverMethodDefinitions = new ArrayList<>();
+            //Map ture service method to certain generic service method.
+            for (ServerMethodDefinition<?,?> genericMethods : genericServiceMethods){
+                for(MethodDescriptor<Request,Response> methodDescriptor : serviceMethods){
+
+                    if(methodDescriptor.getType().equals(genericMethods.getMethodDescriptor().getType())){
+
+                        ServerMethodDefinition<Request,Response> genericMeth = (ServerMethodDefinition<Request, Response>) genericMethods;
+
+                        serverMethodDefinitions.add(
+                                ServerMethodDefinition.create(methodDescriptor, genericMeth.getServerCallHandler())
+                        );
+                    }
+                }
+            }
+            return serverMethodDefinitions;
     }
+
+
+//
+//    private List<ServerMethodDefinition<Request, Response>> getMethodDefinitions(ServerCallHandler<Request, Response> templateHandler,List<MethodDescriptor<Request, Response>> methodDescriptors) {
+//        List<ServerMethodDefinition<Request, Response>> result = new ArrayList<>();
+//        for (MethodDescriptor<Request, Response> methodDescriptor : methodDescriptors) {
+//            ServerMethodDefinition<Request, Response> serverMethodDefinition = ServerMethodDefinition.create(methodDescriptor, templateHandler);
+//            result.add(serverMethodDefinition);
+//        }
+//        return result;
+//    }
 
     private ServiceDescriptor getServiceDescriptor(ServerServiceDefinition template, ProviderConfig providerConfig,
                                                    List<MethodDescriptor<Request, Response>> methodDescriptors) {
-        String serviceName = providerConfig.getInterfaceId();
-        ServiceDescriptor.Builder builder = ServiceDescriptor.newBuilder(serviceName)
+        String serviceName = providerConfig.getInterfaceId(); //拿实际接口名
+        ServiceDescriptor.Builder builder = ServiceDescriptor.newBuilder(serviceName) //通过模板创建实际接口
             .setSchemaDescriptor(template.getServiceDescriptor().getSchemaDescriptor());
         for (MethodDescriptor<Request, Response> methodDescriptor : methodDescriptors) {
             builder.addMethod(methodDescriptor);
@@ -362,9 +379,11 @@ public class TripleServer implements Server {
     private List<MethodDescriptor<Request, Response>> getMethodDescriptor(ProviderConfig providerConfig) {
         List<MethodDescriptor<Request, Response>> result = new ArrayList<>();
         Set<String> methodNames = SofaProtoUtils.getMethodNames(providerConfig.getInterfaceId());
+
         for (String name : methodNames) {
+            MethodDescriptor.MethodType methodType = SofaProtoUtils.mapGrpcCallType(providerConfig.getMethodCallType(name));
             MethodDescriptor<Request, Response> methodDescriptor = MethodDescriptor.<Request, Response>newBuilder()
-                    .setType(MethodDescriptor.MethodType.UNARY)
+                    .setType(methodType)
                     .setFullMethodName(generateFullMethodName(providerConfig.getInterfaceId(), name))
                     .setSampledToLocalTracing(true)
                     .setRequestMarshaller(ProtoUtils.marshaller(
@@ -379,7 +398,6 @@ public class TripleServer implements Server {
 
     /**
      * build chain
-     *
      * @param serviceDef
      * @return
      */

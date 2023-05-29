@@ -181,7 +181,7 @@ public class UniqueIdInvoker implements Invoker {
             .toArray(new String[0]));
     }
 
-    private String getServiceUniqueName(SofaRequest sofaRequest) {
+    public String getServiceUniqueName(SofaRequest sofaRequest) {
         this.readLock.lock();
         try {
             Invoker invoker = this.findInvoker(sofaRequest.getInterfaceName(), getUniqueIdFromInvokeContext());
